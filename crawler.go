@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"
 	"os"
 	"strings"
+	"sync"
 )
 
 // const (
@@ -32,29 +33,31 @@ import (
 // 	}
 // }
 
+type safeURL struct {
+	url string
+	mux sync.Mutex
+}
+
 func crawl(file *os.File) {
-	c := colly.NewCollector(colly.AllowedDomains("en.wikipedia.org"), colly.MaxDepth(2))
-
+	c := colly.NewCollector(colly.AllowedDomains("en.wikipedia.org"), colly.MaxDepth(2), colly.Async(true))
 	outlink := ""
-	c.OnRequest(func(r *colly.Request) {
-		outlink = r.URL.String()[24:]
-	})
+	url := "https://en.wikipedia.org/wiki/Slovakia"
 
-	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 3})
+	c.Limit(&colly.LimitRule{DomainGlob: "*", Parallelism: 2})
+
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		inlink := e.Attr("href")
-		if strings.HasPrefix(inlink, "/wiki/") {
+		outlink = e.Request.URL.String()[24:]
+
+		if strings.HasPrefix(inlink, "/wiki/") && strings.HasPrefix(outlink, "/wiki/") && inlink != outlink {
 			fmt.Println(outlink, inlink)
-			_, err := file.WriteString(outlink + "\t" + inlink + "\n")
-			if err != nil {
-				file.Close()
-				return
-			}
+			file.WriteString(outlink + "\t" + inlink + "\n")
 		}
+
 		e.Request.Visit(inlink)
 	})
 
-	c.Visit("https://en.wikipedia.org/wiki/Slovakia")
+	c.Visit(url)
 
 	c.Wait()
 }
