@@ -1,4 +1,4 @@
-time go run src/main.go src/graph.go src/crawler.go src/pagerank.go && 
+time go run backend/main.go backend/graph.go backend/crawler.go backend/pagerank.go && 
 sort -r -o pagerankfile.txt -t $'\t' -k2,2 pagerankfile.txt &&
-mv pagerankfile.txt results/ && 
-mv linkfile.txt results/
+mv pagerankfile.txt backend/results/ && 
+mv linkfile.txt backend/results/
